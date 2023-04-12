@@ -37,7 +37,7 @@ array_rotate_left(PG_FUNCTION_ARGS)
 
     }
     
-    PG_RETURN_ARRAYTYPE_P(data_array);
+    PG_RETURN_DATUM(data_array);
 
     return 0;
 
