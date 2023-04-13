@@ -36,13 +36,6 @@ Datum array_rotate_left(PG_FUNCTION_ARGS)
     get_typlenbyvalalign(elemType, &elemWidth, &elemTypeByVal, &elemAlignmentCode);
     deconstruct_array(a, elemType, elemWidth, elemTypeByVal, elemAlignmentCode, &datums, &nulls, &count);
 
-    elog(INFO,"elemAlignmentCode->%d",elemAlignmentCode);
-    elog(INFO,"elemType->%d",elemType);
-    elog(INFO,"elemWidth->%d",elemWidth);
-    elog(INFO,"rotation->%d",rotation);
-
-     
-
      array = (int *)malloc(sizeof(int *)*count);
 
      for (i=0;i<count;i++)
@@ -50,10 +43,10 @@ Datum array_rotate_left(PG_FUNCTION_ARGS)
 
     for (i=0;i<rotation;i++)
     {    
-        temp=array[0]; // each time arr[0] will get changed because of shifting 
+        temp=array[0]; 
         for(j=0;j<count;j++)
             array[j] = array[j+1];
-        array[count-1]=temp; // appending one by one
+        array[count-1]=temp; 
     }
 
     elements = palloc(sizeof(Datum *)*count);
