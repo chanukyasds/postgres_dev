@@ -4,7 +4,9 @@
 #include "postgresql/14/server/utils/geo_decls.h"
 #include <stdio.h>
 #include "postgresql/14/server/utils/array.h"
-
+#include "postgresql/14/server/utils/memutils.h"
+#include "/usr/include/postgresql/14/server/common/int.h"
+#include "/usr/include/postgresql/14/server/catalog/pg_type.h"
 
 
 PG_MODULE_MAGIC;
@@ -13,32 +15,55 @@ Datum array_rotate_left(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(array_rotate_left);
 
-Datum
-array_rotate_left(PG_FUNCTION_ARGS)
+Datum array_rotate_left(PG_FUNCTION_ARGS)
 {
-    ExpandedArrayHeader *eah=PG_GETARG_ARRAYTYPE_P(0);
+    ArrayType *a = PG_GETARG_ARRAYTYPE_P(0);
+    int16 elemWidth;
+    Oid elemType = ARR_ELEMTYPE(a);
+    ArrayType *b;
+    Datum *datums;
+    Datum  *elements;
 
-    int32 rotation_cycle=PG_GETARG_INT32(1);
+    int rotation = PG_GETARG_INT32(1);
+    int i, j;
+    int temp;
+    int count;    
+    bool elemTypeByVal;
+    char elemAlignmentCode;
+    bool *nulls;
+    int *array;
 
-    int32 array_length = eah->nelems;
+    get_typlenbyvalalign(elemType, &elemWidth, &elemTypeByVal, &elemAlignmentCode);
+    deconstruct_array(a, elemType, elemWidth, elemTypeByVal, elemAlignmentCode, &datums, &nulls, &count);
 
-    int32 i,j,temp;
+    elog(INFO,"elemAlignmentCode->%d",elemAlignmentCode);
+    elog(INFO,"elemType->%d",elemType);
+    elog(INFO,"elemWidth->%d",elemWidth);
+    elog(INFO,"rotation->%d",rotation);
 
-    Datum *data_array = eah->dvalues;
-    
-    
+     
 
-    for (i=0;i<rotation_cycle;i++)
+     array = (int *)malloc(sizeof(int *)*count);
+
+     for (i=0;i<count;i++)
+         array[i]=(int)datums[i];
+
+    for (i=0;i<rotation;i++)
     {    
-        temp=data_array[0]; // each time arr[0] will get changed because of shifting 
-        for(j=0;j<array_length;j++)
-            data_array[j] = data_array[j+1];
-        data_array[array_length-1]=temp; // appending one by one
-
+        temp=array[0]; // each time arr[0] will get changed because of shifting 
+        for(j=0;j<count;j++)
+            array[j] = array[j+1];
+        array[count-1]=temp; // appending one by one
     }
+
+    elements = palloc(sizeof(Datum *)*count);
+
+      for (i = 0; i < count; i++)
+        elements[i] = Int64GetDatum(array[i]);
+
+    b = construct_array(elements,count,INT8OID,8,true,'d');
+
+    PG_RETURN_ARRAYTYPE_P(b);
+
     
-    PG_RETURN_DATUM(data_array);
-
-    return 0;
-
 }
