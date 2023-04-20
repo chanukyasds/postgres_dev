@@ -5,5 +5,6 @@
         "string_view": "c",
         "array.h": "c",
         "memutils.h": "c"
-    }
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }
