@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include "postgresql/14/server/utils/array.h"
 #include "postgresql/14/server/utils/memutils.h"
-#include "postgresql/14/server/utils/lsyscache.h"
 #include "/usr/include/postgresql/14/server/common/int.h"
 #include "/usr/include/postgresql/14/server/catalog/pg_type.h"
 
@@ -23,7 +22,7 @@ Datum array_rotate_left(PG_FUNCTION_ARGS)
     Oid elemType = ARR_ELEMTYPE(a);
     ArrayType *b;
     Datum *datums;
-   
+    Datum  *elements;
 
     int rotation = PG_GETARG_INT32(1);
     int i, j;
@@ -32,20 +31,30 @@ Datum array_rotate_left(PG_FUNCTION_ARGS)
     bool elemTypeByVal;
     char elemAlignmentCode;
     bool *nulls;
-    
+    int *array;
 
     get_typlenbyvalalign(elemType, &elemWidth, &elemTypeByVal, &elemAlignmentCode);
     deconstruct_array(a, elemType, elemWidth, elemTypeByVal, elemAlignmentCode, &datums, &nulls, &count);
 
+     array = (int *)malloc(sizeof(int *)*count);
+
+     for (i=0;i<count;i++)
+         array[i]=(int)datums[i];
+
     for (i=0;i<rotation;i++)
     {    
-        temp=datums[0]; 
+        temp=array[0]; 
         for(j=0;j<count;j++)
-            datums[j] = datums[j+1];
-        datums[count-1]=temp; 
+            array[j] = array[j+1];
+        array[count-1]=temp; 
     }
 
-    b = construct_array(datums,count,INT8OID,8,true,'d');
+    elements = palloc(sizeof(Datum *)*count);
+
+      for (i = 0; i < count; i++)
+        elements[i] = Int64GetDatum(array[i]);
+
+    b = construct_array(elements,count,INT8OID,8,true,'d');
 
     PG_RETURN_ARRAYTYPE_P(b);
 

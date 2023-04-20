@@ -3,6 +3,7 @@
         "postgres.h": "c",
         "geo_decls.h": "c",
         "string_view": "c",
-        "array.h": "c"
+        "array.h": "c",
+        "memutils.h": "c"
     }
 }
