@@ -79,6 +79,8 @@ Datum workpad(PG_FUNCTION_ARGS)
 
     output_array = construct_array(elements, count, INT4OID, elementwidth, elementtypebyval, elementalignmentcode);
 
+
+
     PG_RETURN_ARRAYTYPE_P(output_array);
 }
 
@@ -106,4 +108,7 @@ Datum workpad(PG_FUNCTION_ARGS)
   * int ndims = ARR_NDIM(input_array);
     int *dims = ARR_DIMS(input_array);
     int *lbs  = ARR_LBOUND(input_array);
+
+    // output_array = construct_md_array(elements,nulls,ndims,dims,lbs,elementype,elementwidth,elementtypebyval,elementalignmentcode); 
+    // above is not required because there is no NULL.
 */
