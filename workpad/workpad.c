@@ -32,11 +32,25 @@ workpad(PG_FUNCTION_ARGS)
 
     ArrayType *output_array;
 
+    int ndims = ARR_NDIM(input_array);
+    int *dims = ARR_DIMS(input_array);
+    int *lbs  = ARR_LBOUND(input_array);
+
+    elog(NOTICE,"NDIMS is %d",ndims);
+    elog(NOTICE,"DIMS is %d",dims[ndims-1]);
+    elog(NOTICE,"LBOUND is %d",lbs[ndims-1]);
+
+    if (!OidIsValid(elementype))
+        elog(ERROR,"Invalid OID");
+
+    if (ndims > 1)
+        elog(ERROR,"Only 1-D arrays are allowed.");
+
+
     get_typlenbyvalalign(elementype,&elementwidth,&elementtypebyval,&elementalignmentcode);
 
     deconstruct_array(input_array,elementype,elementwidth,elementtypebyval,elementalignmentcode,&elements,&nulls,&count);
 
-    elog(NOTICE,"base type is %d", get_base_element_type(elementype));
 
     arr = malloc(sizeof(int *)*count+1);
 
@@ -67,14 +81,8 @@ workpad(PG_FUNCTION_ARGS)
         elements[i]=Int64GetDatum(arr[i]);
 
     output_array = construct_array(elements,count,INT4OID,elementwidth,elementtypebyval,elementalignmentcode);
-
-    construct_md_array
-
-    deconstr
-
-    PG_RETURN_ARRAYTYPE_P(output_array);
-
     
+    PG_RETURN_ARRAYTYPE_P(output_array);
 
 }
 
@@ -101,4 +109,9 @@ workpad(PG_FUNCTION_ARGS)
   * dims: integer array with size of each dimension
   * lbs: integer array with lower bound of each dimension
   * elmtype, elmlen, elmbyval, elmalign: info for the datatype of the items
+  * 
+  * 
+  * int ndims = ARR_NDIM(input_array);
+    int *dims = ARR_DIMS(input_array);
+    int *lbs  = ARR_LBOUND(input_array);
 */
