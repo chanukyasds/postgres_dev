@@ -68,7 +68,13 @@ workpad(PG_FUNCTION_ARGS)
 
     output_array = construct_array(elements,count,INT4OID,elementwidth,elementtypebyval,elementalignmentcode);
 
+    construct_md_array
+
+    deconstr
+
     PG_RETURN_ARRAYTYPE_P(output_array);
+
+    
 
 }
 
@@ -87,3 +93,12 @@ workpad(PG_FUNCTION_ARGS)
 // unused ----------------
 
 //get_base_element_type(elementype) gives pg_type.typbasetype
+
+/*
+  * elems: array of Datum items to become the array contents
+  * nulls: array of is-null flags (can be NULL if no nulls)
+  * ndims: number of dimensions
+  * dims: integer array with size of each dimension
+  * lbs: integer array with lower bound of each dimension
+  * elmtype, elmlen, elmbyval, elmalign: info for the datatype of the items
+*/
