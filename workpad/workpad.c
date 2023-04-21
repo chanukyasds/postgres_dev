@@ -11,8 +11,7 @@ Datum workpad(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(workpad);
 
-Datum
-workpad(PG_FUNCTION_ARGS)
+Datum workpad(PG_FUNCTION_ARGS)
 {
     ArrayType *input_array = PG_GETARG_ARRAYTYPE_P(0);
     int new_element = PG_GETARG_INT32(1);
@@ -27,39 +26,37 @@ workpad(PG_FUNCTION_ARGS)
     int count;
 
     int *arr;
-    int i,replaced_element;
-    int found=0;
+    int i, replaced_element;
+    int found = 0;
 
     ArrayType *output_array;
 
     int ndims = ARR_NDIM(input_array);
     int *dims = ARR_DIMS(input_array);
-    int *lbs  = ARR_LBOUND(input_array);
+    int *lbs = ARR_LBOUND(input_array);
 
-    elog(NOTICE,"NDIMS is %d",ndims);
-    elog(NOTICE,"DIMS is %d",dims[ndims-1]);
-    elog(NOTICE,"LBOUND is %d",lbs[ndims-1]);
+    elog(NOTICE, "NDIMS is %d", ndims);
+    elog(NOTICE, "DIMS is %d", dims[ndims - 1]);
+    elog(NOTICE, "LBOUND is %d", lbs[ndims - 1]);
 
     if (!OidIsValid(elementype))
-        elog(ERROR,"Invalid OID");
+        elog(ERROR, "Invalid OID");
 
     if (ndims > 1)
-        elog(ERROR,"Only 1-D arrays are allowed.");
+        elog(ERROR, "Only 1-D arrays are allowed.");
 
+    get_typlenbyvalalign(elementype, &elementwidth, &elementtypebyval, &elementalignmentcode);
 
-    get_typlenbyvalalign(elementype,&elementwidth,&elementtypebyval,&elementalignmentcode);
+    deconstruct_array(input_array, elementype, elementwidth, elementtypebyval, elementalignmentcode, &elements, &nulls, &count);
 
-    deconstruct_array(input_array,elementype,elementwidth,elementtypebyval,elementalignmentcode,&elements,&nulls,&count);
+    arr = malloc(sizeof(int *) * count + 1);
 
+    for (i = 0; i < count; i++)
+        arr[i] = elements[i];
 
-    arr = malloc(sizeof(int *)*count+1);
-
-    for (i=0;i<count;i++)
-        arr[i]=elements[i];
-
-    for (i=0;i<count;i++)
+    for (i = 0; i < count; i++)
     {
-        if (i==position)
+        if (i == position)
         {
             replaced_element = arr[i];
             arr[i] = new_element;
@@ -67,40 +64,35 @@ workpad(PG_FUNCTION_ARGS)
             found = 1;
             continue;
         }
-        if (found==1)
+        if (found == 1)
         {
-            arr[i]= arr[i]+replaced_element;
-            replaced_element = arr[i]-replaced_element;
-            arr[i]=arr[i]-replaced_element;
+            arr[i] = arr[i] + replaced_element;
+            replaced_element = arr[i] - replaced_element;
+            arr[i] = arr[i] - replaced_element;
         }
     }
 
-    elements = repalloc(elements,count);
+    elements = repalloc(elements, count);
 
-    for (i=0;i<count;i++)
-        elements[i]=Int64GetDatum(arr[i]);
+    for (i = 0; i < count; i++)
+        elements[i] = Int64GetDatum(arr[i]);
 
-    output_array = construct_array(elements,count,INT4OID,elementwidth,elementtypebyval,elementalignmentcode);
-    
+    output_array = construct_array(elements, count, INT4OID, elementwidth, elementtypebyval, elementalignmentcode);
+
     PG_RETURN_ARRAYTYPE_P(output_array);
-
 }
 
+// get_array_type(elementype) gives pg_type.typearray
+//  ARR_ELEMTYPE gives pg_type.oid
+//  get_fn_expr_argtype(fcinfo->flinfo, 0) gives pg_type.typearray
 
-
-
-//get_array_type(elementype) gives pg_type.typearray 
-// ARR_ELEMTYPE gives pg_type.oid
-// get_fn_expr_argtype(fcinfo->flinfo, 0) gives pg_type.typearray
-
-//get_typlen(elementype)) gives pg_type.typlen
+// get_typlen(elementype)) gives pg_type.typlen
 
 // get_typlenbyval(elementtype,&elementwidth,&elementtypebyval); gives both width(length) and typebyval
 
-
 // unused ----------------
 
-//get_base_element_type(elementype) gives pg_type.typbasetype
+// get_base_element_type(elementype) gives pg_type.typbasetype
 
 /*
   * elems: array of Datum items to become the array contents
@@ -109,8 +101,8 @@ workpad(PG_FUNCTION_ARGS)
   * dims: integer array with size of each dimension
   * lbs: integer array with lower bound of each dimension
   * elmtype, elmlen, elmbyval, elmalign: info for the datatype of the items
-  * 
-  * 
+  *
+  *
   * int ndims = ARR_NDIM(input_array);
     int *dims = ARR_DIMS(input_array);
     int *lbs  = ARR_LBOUND(input_array);
