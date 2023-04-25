@@ -5,7 +5,12 @@
         "string_view": "c",
         "array.h": "c",
         "memutils.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "lsyscache.h": "c"
     },
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none"
 }

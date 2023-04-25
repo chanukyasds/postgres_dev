@@ -3,3 +3,4 @@ count_char/count_char.o
 count_char/count_char.bc
 count_char/count_char.so
 .vscode/c_cpp_properties.json
+return_records/check.py
