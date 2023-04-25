@@ -1,11 +1,14 @@
 drop extension composite;
 create extension composite;
+select 'jai shree ram' as life;
 
 select workpad(ARRAY[7,2,3,4,5,6,12,24,67,15,29],9,3);
 
 select workpad(ARRAY[1,2,3,4,5,6,7,8],9,3);
 
-select oid,typname,typlen,typbyval,typtype,typcategory,typelem,typarray,typalign from pg_type where oid = 23;
+select oid,typname,typlen,typbyval,typtype,typcategory,typelem,typarray,typalign,typstorage from pg_type where oid = 23;
+
+select oid,typname,typlen,typbyval,typtype,typcategory,typelem,typarray,typalign from pg_type where typname ilike'%int%'
 
 select * from pg_type where typname = 'custom_type';
 

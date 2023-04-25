@@ -1,10 +1,11 @@
 #include "/usr/include/postgresql/14/server/postgres.h"
 #include "/usr/include/postgresql/14/server/fmgr.h"
-#include "/usr/include/postgresql/14/server/executor/executor.h"  
+#include "/usr/include/postgresql/14/server/executor/executor.h"
 #include "/usr/include/postgresql/14/server/utils/lsyscache.h"
 #include "/usr/include/postgresql/14/server/utils/array.h"
 #include "/usr/include/postgresql/14/server/catalog/pg_type.h"
 #include "/usr/include/postgresql/14/server/access/tupmacs.h"
+#include "/usr/include/postgresql/14/server/funcapi.h"
 #include "stdio.h"
 #include "stddef.h"
 
@@ -14,13 +15,10 @@ Datum composite(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(composite);
 
-Datum
-composite(PG_FUNCTION_ARGS)
+Datum composite(PG_FUNCTION_ARGS)
 {
     ArrayType *input_array = PG_GETARG_ARRAYTYPE_P(0);
-
     Oid elementtype = ARR_ELEMTYPE(input_array);
-
     int16 elementwidth;
     bool elementtypebyval;
     char elementalignmentcode;
@@ -28,109 +26,81 @@ composite(PG_FUNCTION_ARGS)
     bool *nulls;
     int count;
 
-    int i,j;
+    int i, j;
+    int atts_count = 4;
+    TupleDesc resultTupleDesc;
     HeapTupleHeader row_header;
-    Datum sub_dt;
-    ArrayType *sub_arr;
-    int *irr;
-    int sum=0;
-    int *len;
-    Datum res;
-
+    Datum *output_datums;
+    Datum *result_datums;
     ArrayType *output_array;
+    ArrayType *inner_arry;
+    HeapTuple ret_tuple;
+    int *arr;
+    int sum;
+    int in_arr_len;
 
+    // getting array info
+    get_typlenbyvalalign(elementtype, &elementwidth, &elementtypebyval, &elementalignmentcode);
 
-    int ndims = ARR_NDIM(input_array);
-    int *dims = ARR_DIMS(input_array);
-    int *lbs = ARR_LBOUND(input_array);
+    // deconstructing the array to get datums and count
+    deconstruct_array(input_array, elementtype, elementwidth, elementtypebyval, elementalignmentcode, &elements, &nulls, &count);
 
-    get_typlenbyvalalign(elementtype,&elementwidth,&elementtypebyval,&elementalignmentcode);
+    // building the TupleDesc manually
+    // So i avoided using obsolete function TypeGetTupleDesc
+    // atts information can be found in pg_attribute and pg_type
+    // future we can manage this automatically by fetching query records with OID on pg_attribute view
+    resultTupleDesc = CreateTemplateTupleDesc(atts_count); // creating template
+    TupleDescInitEntry(resultTupleDesc, (AttrNumber)1, "a1", INT4OID, -1, 0);
+    TupleDescInitEntry(resultTupleDesc, (AttrNumber)2, "a2", TEXTOID, -1, 0);
+    TupleDescInitEntry(resultTupleDesc, (AttrNumber)3, "a3", INT4ARRAYOID, -1, 0);
+    TupleDescInitEntry(resultTupleDesc, (AttrNumber)4, "a4", INT4OID, -1, 0);
+    resultTupleDesc = BlessTupleDesc(resultTupleDesc); // for datums it is required to Bless
 
-    deconstruct_array(input_array,elementtype,elementwidth,elementtypebyval,elementalignmentcode,&elements,&nulls,&count);
+    // allocating memory to result_datums
+    // we have to return same no of records so count is used
+    result_datums = palloc(sizeof(Datum) * count);
 
-
-
-
-    for (i=0;i<count;i++)
+    for (i = 0; i < count; i++)
     {
 
-        sum=0;
+        bool isnull1, isnull2, isnull3, innerarrnull, isnull_tup;
+        sum = 0;
 
+        // getting header of each record in array
         row_header = DatumGetHeapTupleHeader(elements[i]);
-        bool isnull;
 
-        sub_dt = GetAttributeByName(row_header, "a3", &isnull);
+        // third one is array so forming an integer array
+        inner_arry = DatumGetArrayTypeP(GetAttributeByName(row_header, "a3", &innerarrnull));
+        arr = (int *)ARR_DATA_PTR(inner_arry);
 
-        sub_arr = DatumGetArrayTypeP(sub_dt);
+        // calculating internal array length
+        in_arr_len = ARR_DIMS(inner_arry)[0];
 
-        irr = (int *)ARR_DATA_PTR(sub_arr);
+        // calculating sum of internal array
+        for (j = 0; j < in_arr_len; j++)
+            sum = sum + arr[j];
 
-        len = ARR_DIMS(sub_arr);
+        // allocating memory for datums based on atts inside each_record
+        output_datums = palloc(sizeof(Datum *) * atts_count);
 
-        for (j=0;j<len[0];j++)
-            sum=sum+irr[j];
+        // allocating individual datum values to first 3 atts and calculated sum to 4th att
+        output_datums[0] = GetAttributeByName(row_header, "a1", &isnull1);
+        output_datums[1] = GetAttributeByName(row_header, "a2", &isnull2);
+        output_datums[2] = GetAttributeByName(row_header, "a3", &isnull3);
+        output_datums[3] = (Datum)sum;
 
-        elog(NOTICE,"sum is %d",sum);
+        // Building a record / tuple with the datums array
+        ret_tuple = heap_form_tuple(resultTupleDesc, output_datums, &isnull_tup);
 
-        bool isanothernull;
+        // getting datum from tuple and adding to result_datums
+        result_datums[i] = HeapTupleGetDatum(ret_tuple);
 
-        res = GetAttributeByName(row_header,"a4",&isanothernull);
-
-        res = Int64GetDatum(sum);
-
-        elog(NOTICE,"res is %d",res);
-        
+        // every time releasing memory to avoid memory leaks
+        pfree(output_datums);
     }
 
-
-    output_array = construct_array(elements, count,2276, elementwidth, elementtypebyval, elementalignmentcode);
-
-   
-    // Datum dt = GetAttributeByName(t,"a2",&isnull);
-
-    // elog(NOTICE,"%s",text_to_cstring(dt));
-   
-    
-    
-
-    // elog(NOTICE,"%d",tt[0]);
-
-    // ArrayType *sub_array = DatumGetArrayTypeP(dt);
-
-    // Datum *arr = (Datum *) ARR_DATA_PTR(sub_array);
-    
-    // elog(NOTICE,"element is %ld",(arr[0]));
-
-    
-
-    //ArrayType *sub_array =  DatumGetArrayTypeP(dt);
-
-
-
-    /*
-
-    Oid sub_elementtype = ARR_ELEMTYPE(sub_array);
-
-    int16 sub_elementwidth;
-    bool sub_elementtypebyval;
-    char sub_elementalignmentcode;
-    Datum *sub_elements;
-    bool *sub_nulls;
-    int sub_count;
-
-    get_typlenbyvalalign(sub_elementtype,&sub_elementwidth,&sub_elementtypebyval,&sub_elementalignmentcode);
-
-    deconstruct_array(sub_array,sub_elementtype,sub_elementwidth,sub_elementtypebyval,sub_elementalignmentcode,&sub_elements,&sub_nulls,&sub_count);
-
-    elog(NOTICE,"element is %d",sub_elements[0]);
- 
-    // ArrayType *sub_array = DatumGetArrayTypeP(marks);
-
-    //elog(NOTICE,"ELEMENT VALUE is %d",Int64GetDatum(elements[1]));
-
-    //elog(NOTICE,"count is %d",count);
-
-    */
+    // constructing array with the result_datums
+    output_array = construct_array(result_datums, count, elementtype, elementwidth, elementtypebyval, elementalignmentcode);
 
     PG_RETURN_ARRAYTYPE_P(output_array);
 }
