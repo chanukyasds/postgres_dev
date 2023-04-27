@@ -50,6 +50,7 @@ Datum return_records(PG_FUNCTION_ARGS)
         TupleDescInitEntry(tupdesc, (AttrNumber)1, "a1", INT4OID, -1, 0);
         tupdesc = BlessTupleDesc(tupdesc);
 
+        /* allocate required values for funcctx */
         funcctx->max_calls = count;
         funcctx->call_cntr = 0;
         funcctx->tuple_desc = tupdesc;
@@ -61,6 +62,8 @@ Datum return_records(PG_FUNCTION_ARGS)
 
     if (funcctx->call_cntr < funcctx->max_calls)
     {
+        /* index is passed as funcctx->call_cntr because its starts from 0 and
+        increments everytime by SRF_RETURN_NEXT */
         each_row = elements[funcctx->call_cntr];
 
         SRF_RETURN_NEXT(funcctx, each_row);
