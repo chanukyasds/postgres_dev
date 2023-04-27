@@ -6,7 +6,8 @@
         "array.h": "c",
         "memutils.h": "c",
         "stddef.h": "c",
-        "lsyscache.h": "c"
+        "lsyscache.h": "c",
+        "builtins.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "[python]": {
