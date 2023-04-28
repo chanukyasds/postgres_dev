@@ -50,10 +50,7 @@ Datum split_composite(PG_FUNCTION_ARGS)
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
         tupDesc = generate_tupledesc(elementType);
-        // TupleDescInitEntry(tupDesc, (AttrNumber)1, "a1", INT4OID, -1, 0);
-        // TupleDescInitEntry(tupDesc, (AttrNumber)2, "a2", TEXTOID, -1, 0);
-        // TupleDescInitEntry(tupDesc, (AttrNumber)3, "a3", INT4ARRAYOID, -1, 0);
-        // TupleDescInitEntry(tupDesc, (AttrNumber)4, "a4", INT4OID, -1, 0);
+
         tupDesc = BlessTupleDesc(tupDesc);
 
         funcctx->max_calls = count;
@@ -122,6 +119,8 @@ TupleDesc generate_tupledesc(int elementType)
 
     tuptable = SPI_tuptable;
     tupdesc = tuptable->tupdesc;
+
+    /*handling cols for future req*/
 
     resTupleDesc = CreateTemplateTupleDesc(total_rows);
     for (i = 0; i < total_rows; i++)
