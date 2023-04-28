@@ -1,6 +1,7 @@
 #include "/usr/include/postgresql/14/server/postgres.h"
 #include "/usr/include/postgresql/14/server/fmgr.h"
 #include "/usr/include/postgresql/14/server/executor/executor.h"
+#include "/usr/include/postgresql/14/server/executor/spi.h"
 #include "/usr/include/postgresql/14/server/utils/lsyscache.h"
 #include "/usr/include/postgresql/14/server/utils/array.h"
 #include "/usr/include/postgresql/14/server/catalog/pg_type.h"
@@ -12,6 +13,7 @@
 PG_MODULE_MAGIC;
 
 Datum split_composite(PG_FUNCTION_ARGS);
+TupleDesc generate_tupledesc(int elementType);
 
 PG_FUNCTION_INFO_V1(split_composite);
 
@@ -47,11 +49,11 @@ Datum split_composite(PG_FUNCTION_ARGS)
 
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-        tupDesc = CreateTemplateTupleDesc(4);
-        TupleDescInitEntry(tupDesc, (AttrNumber)1, "a1", INT4OID, -1, 0);
-        TupleDescInitEntry(tupDesc, (AttrNumber)2, "a2", TEXTOID, -1, 0);
-        TupleDescInitEntry(tupDesc, (AttrNumber)3, "a3", INT4ARRAYOID, -1, 0);
-        TupleDescInitEntry(tupDesc, (AttrNumber)4, "a4", INT4OID, -1, 0);
+        tupDesc = generate_tupledesc(elementType);
+        // TupleDescInitEntry(tupDesc, (AttrNumber)1, "a1", INT4OID, -1, 0);
+        // TupleDescInitEntry(tupDesc, (AttrNumber)2, "a2", TEXTOID, -1, 0);
+        // TupleDescInitEntry(tupDesc, (AttrNumber)3, "a3", INT4ARRAYOID, -1, 0);
+        // TupleDescInitEntry(tupDesc, (AttrNumber)4, "a4", INT4OID, -1, 0);
         tupDesc = BlessTupleDesc(tupDesc);
 
         funcctx->max_calls = count;
@@ -63,30 +65,81 @@ Datum split_composite(PG_FUNCTION_ARGS)
 
     funcctx = SRF_PERCALL_SETUP();
 
-    
-
     if (funcctx->call_cntr < funcctx->max_calls)
     {
-        fields = palloc(sizeof(Datum *)*4);
+        fields = palloc(sizeof(Datum *) * funcctx->tuple_desc->natts);
 
-        bool isnull1,isnull2,isnull3,isnull4,tupnull;
+        bool isnull1, isnull2, isnull3, isnull4, tupnull;
 
         i = (int)funcctx->call_cntr;
 
         tupHeader = DatumGetHeapTupleHeader(elements[i]);
 
-        fields[0] = GetAttributeByName(tupHeader,"a1",&isnull1);
-        fields[1] = GetAttributeByName(tupHeader,"a2",&isnull2);
-        fields[2] = GetAttributeByName(tupHeader,"a3",&isnull3);
-        fields[3] = GetAttributeByName(tupHeader,"a4",&isnull4);
+        fields[0] = GetAttributeByName(tupHeader, "a1", &isnull1);
+        fields[1] = GetAttributeByName(tupHeader, "a2", &isnull2);
+        fields[2] = GetAttributeByName(tupHeader, "a3", &isnull3);
+        fields[3] = GetAttributeByName(tupHeader, "a4", &isnull4);
 
-        tuple = heap_form_tuple(funcctx->tuple_desc,fields,&tupnull);
+        tuple = heap_form_tuple(funcctx->tuple_desc, fields, &tupnull);
 
         each_row = HeapTupleGetDatum(tuple);
 
-        SRF_RETURN_NEXT(funcctx,each_row);
+        SRF_RETURN_NEXT(funcctx, each_row);
     }
 
     SRF_RETURN_DONE(funcctx);
+}
 
+TupleDesc generate_tupledesc(int elementType)
+{
+    char query[500];
+    int total_rows;
+
+    TupleDesc tupdesc;
+    HeapTuple tuple;
+    SPITupleTable *tuptable;
+
+    TupleDesc resTupleDesc;
+    AttrNumber attnum;
+    const char *attname;
+    Oid oidtypeid;
+    int32 typmod;
+    int attdim;
+
+    int i;
+
+    pg_sprintf(query, "SELECT typs.attnum,typs.attname,typs.atttypid as OidTypeid,pt.typtypmod as typmod,0 as attdim "
+                      "FROM pg_type pt JOIN (SELECT attname,typname,atttypid,attnum "
+                      "FROM pg_type typ JOIN pg_attribute att ON att.attrelid = typ.typrelid "
+                      "WHERE att.attname IN ( SELECT attname FROM pg_attribute "
+                      "WHERE attrelid IN (SELECT typrelid FROM pg_type WHERE oid = %d)))typs  "
+                      "ON typs.atttypid = pt.oid ORDER BY 1; ",
+               elementType);
+
+    SPI_connect();
+    SPI_exec(query, 0);
+    total_rows = (int)SPI_processed;
+
+    tuptable = SPI_tuptable;
+    tupdesc = tuptable->tupdesc;
+
+    resTupleDesc = CreateTemplateTupleDesc(total_rows);
+    for (i = 0; i < total_rows; i++)
+    {
+        bool isnull1, isnull2, isnull3, isnull4;
+        tuple = tuptable->vals[i];
+
+        /*Finding Entries to create Tuple Desc*/
+        attnum = SPI_getbinval(tuple, tupdesc, 1, &isnull1);
+        attname = SPI_getvalue(tuple, tupdesc, 2);
+        oidtypeid = SPI_getbinval(tuple, tupdesc, 3, &isnull2);
+        typmod = SPI_getbinval(tuple, tupdesc, 4, &isnull3);
+        attdim = SPI_getbinval(tuple, tupdesc, 5, &isnull4);
+
+        TupleDescInitEntry(resTupleDesc, attnum, attname, oidtypeid, typmod, attdim);
+    }
+
+    SPI_finish();
+
+    return resTupleDesc;
 }
