@@ -127,7 +127,7 @@ TupleDesc generate_tupledesc(int elementType)
     {
         bool isnull1, isnull2, isnull3, isnull4;
         tuple = tuptable->vals[i];
-
+        
         /*Finding Entries to create Tuple Desc*/
         attnum = SPI_getbinval(tuple, tupdesc, 1, &isnull1);
         attname = SPI_getvalue(tuple, tupdesc, 2);
