@@ -4,10 +4,10 @@
 #include "/usr/include/postgresql/14/server/executor/executor.h"
 #include "/usr/include/postgresql/14/server/executor/spi.h"
 #include "/usr/include/postgresql/14/server/utils/array.h"
-#include "/usr/include/postgresql/14/server/utils/builtins.h"
 #include "/usr/include/postgresql/14/server/utils/lsyscache.h"
-#include "/usr/include/postgresql/14/server/catalog/pg_type.h"
-#include "/usr/include/postgresql/14/server/access/tupmacs.h"
+//#include "/usr/include/postgresql/14/server/utils/builtins.h"
+//#include "/usr/include/postgresql/14/server/catalog/pg_type.h"
+//#include "/usr/include/postgresql/14/server/access/tupmacs.h"
 
 PG_MODULE_MAGIC;
 
