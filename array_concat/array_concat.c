@@ -23,7 +23,7 @@ Datum array_concat(PG_FUNCTION_ARGS)
     int i;
     text *result;
     int size = 0;
-    int run_size=0;
+    int run_size = 0;
 
     size_t each_size;
 
@@ -33,10 +33,9 @@ Datum array_concat(PG_FUNCTION_ARGS)
     for (i = 0; i < count; i++)
         size = size + VARSIZE_ANY_EXHDR(DatumGetCString(elements[i]));
 
-    size = size+VARHDRSZ;
+    size = size + VARHDRSZ;
 
-    result = (text *) palloc(size);
-
+    result = (text *)palloc(size);
 
     SET_VARSIZE(result, size);
 
@@ -44,13 +43,8 @@ Datum array_concat(PG_FUNCTION_ARGS)
     {
         each_size = VARSIZE_ANY_EXHDR(DatumGetCString(elements[i]));
         memcpy(VARDATA(result) + run_size, VARDATA_ANY(elements[i]), each_size);
-        run_size=run_size+each_size;
+        run_size = run_size + each_size;
     }
 
     PG_RETURN_TEXT_P(result);
-
-    
-
-
-    
 }
