@@ -1,0 +1,4 @@
+comment = 'return_texts'
+default_version = '1.0'
+module_pathname = '$libdir/return_texts'
+relocatable = true
