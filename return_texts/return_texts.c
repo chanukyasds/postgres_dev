@@ -8,8 +8,13 @@
 #include "/usr/include/postgresql/14/server/access/tupmacs.h"
 #include "/usr/include/postgresql/14/server/funcapi.h"
 
-
 PG_MODULE_MAGIC;
+
+union cust_union
+{
+    int val;
+    char letter[1];
+};
 
 Datum return_texts(PG_FUNCTION_ARGS);
 
@@ -23,7 +28,6 @@ Datum return_texts(PG_FUNCTION_ARGS)
     TupleDesc tupdesc;
     Datum each_row;
 
-
     if (SRF_IS_FIRSTCALL())
     {
         MemoryContext oldcontext;
@@ -35,14 +39,14 @@ Datum return_texts(PG_FUNCTION_ARGS)
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
         /* Build a tuple descriptor for our result type */
-        tupdesc = CreateTemplateTupleDesc(1); // creating template
-        TupleDescInitEntry(tupdesc, (AttrNumber)1, "a1", TEXTOID, -1, 0);
-        tupdesc = BlessTupleDesc(tupdesc);
+        // = CreateTemplateTupleDesc(1); // creating template
+        // TupleDescInitEntry(tupdesc, (AttrNumber)1, "a1", TEXTOID, -1, 0);
+        // tupdesc = BlessTupleDesc(tupdesc);
 
         /* allocate required values for funcctx */
         funcctx->max_calls = count;
         funcctx->call_cntr = 0;
-        funcctx->tuple_desc = tupdesc;
+        // funcctx->tuple_desc = tupdesc;
 
         MemoryContextSwitchTo(oldcontext);
     }
@@ -51,12 +55,16 @@ Datum return_texts(PG_FUNCTION_ARGS)
 
     if (funcctx->call_cntr < funcctx->max_calls)
     {
-        /* index is passed as funcctx->call_cntr because its starts from 0 and
-        increments everytime by SRF_RETURN_NEXT */
 
-        char result[5] = "HELLO";
+        union cust_union *u1;
 
-        each_row =  CStringGetTextDatum(result);
+        u1 = (union cust_union *)palloc(sizeof(union cust_union) * 1);
+
+        u1->val = (int)65 + funcctx->call_cntr;
+
+        char *result = u1->letter;
+
+        each_row = CStringGetTextDatum(result);
 
         SRF_RETURN_NEXT(funcctx, each_row);
     }
