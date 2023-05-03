@@ -27,6 +27,13 @@ Datum return_texts(PG_FUNCTION_ARGS)
     FuncCallContext *funcctx;
     Datum each_row;
 
+    Datum *values;
+
+    TupleDesc tupdesc;
+    HeapTuple tuple;
+
+    values = palloc(sizeof(Datum) * 2);
+
     if (SRF_IS_FIRSTCALL())
     {
         MemoryContext oldcontext;
@@ -35,8 +42,14 @@ Datum return_texts(PG_FUNCTION_ARGS)
 
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
+        tupdesc = CreateTemplateTupleDesc(2); // creating template
+        TupleDescInitEntry(tupdesc, (AttrNumber)1, "value", INT4OID, -1, 0);
+        TupleDescInitEntry(tupdesc, (AttrNumber)2, "letter", TEXTOID, -1, 0);
+        tupdesc = BlessTupleDesc(tupdesc);
+
         funcctx->max_calls = count;
         funcctx->call_cntr = 0;
+        funcctx->tuple_desc = tupdesc;
 
         MemoryContextSwitchTo(oldcontext);
     }
@@ -47,14 +60,18 @@ Datum return_texts(PG_FUNCTION_ARGS)
     {
 
         union cust_union *u1;
+        bool tupnull;
 
         u1 = (union cust_union *)palloc(sizeof(union cust_union) * 1);
 
         u1->val = (int)65 + funcctx->call_cntr;
 
-        char *result = u1->letter;
+        values[0] = Int32GetDatum(u1->val);
+        values[1] = CStringGetTextDatum(u1->letter);
 
-        each_row = CStringGetTextDatum(result);
+        tuple = heap_form_tuple(funcctx->tuple_desc, values, &tupnull);
+
+        each_row = HeapTupleGetDatum(tuple);
 
         SRF_RETURN_NEXT(funcctx, each_row);
     }

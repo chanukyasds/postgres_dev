@@ -7,7 +7,8 @@
         "memutils.h": "c",
         "stddef.h": "c",
         "lsyscache.h": "c",
-        "builtins.h": "c"
+        "builtins.h": "c",
+        "funcapi.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "[python]": {
