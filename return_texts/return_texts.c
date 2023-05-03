@@ -25,28 +25,18 @@ Datum return_texts(PG_FUNCTION_ARGS)
     int count = (int)PG_GETARG_INT64(0);
 
     FuncCallContext *funcctx;
-    TupleDesc tupdesc;
     Datum each_row;
 
     if (SRF_IS_FIRSTCALL())
     {
         MemoryContext oldcontext;
 
-        /* create a function context for cross-call persistence */
         funcctx = SRF_FIRSTCALL_INIT();
 
-        /* switch to memory context appropriate for multiple function calls */
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-        /* Build a tuple descriptor for our result type */
-        // = CreateTemplateTupleDesc(1); // creating template
-        // TupleDescInitEntry(tupdesc, (AttrNumber)1, "a1", TEXTOID, -1, 0);
-        // tupdesc = BlessTupleDesc(tupdesc);
-
-        /* allocate required values for funcctx */
         funcctx->max_calls = count;
         funcctx->call_cntr = 0;
-        // funcctx->tuple_desc = tupdesc;
 
         MemoryContextSwitchTo(oldcontext);
     }
