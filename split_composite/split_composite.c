@@ -9,8 +9,6 @@
 #include "/usr/include/postgresql/14/server/catalog/pg_type.h"
 #include "/usr/include/postgresql/14/server/access/tupmacs.h"
 
-#include "stdio.h"
-
 PG_MODULE_MAGIC;
 
 Datum split_composite(PG_FUNCTION_ARGS);
