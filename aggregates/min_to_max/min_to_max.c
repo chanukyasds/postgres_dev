@@ -16,9 +16,6 @@ PG_MODULE_MAGIC;
 Datum min_to_max_sfunc(PG_FUNCTION_ARGS);
 Datum min_to_max_ffunc(PG_FUNCTION_ARGS);
 
-int get_length_num(int);
-static text *return_result(ArrayType*,const char *);  // newly developed array to text pattern
-
 PG_FUNCTION_INFO_V1(min_to_max_sfunc);
 PG_FUNCTION_INFO_V1(min_to_max_ffunc);
 
@@ -30,66 +27,6 @@ typedef union pgnum
 	float4 f4;
 	float8 f8;
 } pgnum;
-
-int get_length_num(int num)
-{
-	int count = 0;
-
-	while (num > 0)
-	{
-		count++;
-		num = num / 10;
-	}
-	elog(NOTICE,"Count is %d",count);
-	return count;
-}
-
-static text *return_result(ArrayType *a, const char *fldsep)
-{
-	Oid elementType;
-	int16 elementWidth;
-	bool elementTypeByValue;
-	char elementAlignmentCode;
-	Datum *elements;
-	bool *nulls;
-	int count;
-
-	text *result;
-	int size = 0;
-
-	char *first_num;
-	char *second_num;
-	char *res;
-
-	StringInfoData buf;
-
-	initStringInfo(&buf);
-
-	elementType = ARR_ELEMTYPE(a);
-
-	get_typlenbyvalalign(elementType, &elementWidth, &elementTypeByValue, &elementAlignmentCode);
-
-	deconstruct_array(a, elementType, elementWidth, elementTypeByValue, elementAlignmentCode, &elements, &nulls, &count);
-
-	first_num = palloc(sizeof(char *) * get_length_num(elements[0]));
-	second_num = palloc(sizeof(char *) * get_length_num(elements[1]));
-
-	elog(NOTICE,"first num is %s",first_num);
-	elog(NOTICE,"second num is %s",second_num);
-
-	pg_sprintf(first_num, "%ld", elements[0]);
-	pg_sprintf(second_num, "%ld", elements[1]);
-
-	size = strlen(first_num) + strlen(fldsep) + strlen(second_num);
-
-	res = palloc(sizeof(char *) * size);
-
-	pg_sprintf(res, "%s%s%s", first_num, fldsep, second_num);
-
-	result = cstring_to_text_with_len(res,size);
-
-	return result;
-}
 
 static text *
 array_to_text_internal(FunctionCallInfo fcinfo, ArrayType *v, const char *fldsep, const char *null_string)
@@ -205,9 +142,7 @@ Datum min_to_max_sfunc(PG_FUNCTION_ARGS)
 	Datum data;
 
 	if (arg_type == InvalidOid)
-		ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("Invalid Parameter Value")));
+		ereport(ERROR,(errcode(ERRCODE_INVALID_PARAMETER_VALUE),errmsg("Invalid Parameter Value")));
 
 	if (!AggCheckCallContext(fcinfo, &aggcontext))
 		elog(ERROR, "min_to_max_sfunc called in non-aggregate context");
@@ -221,14 +156,14 @@ Datum min_to_max_sfunc(PG_FUNCTION_ARGS)
 
 	state = accumArrayResult(state, data, PG_ARGISNULL(1), arg_type, aggcontext);
 
-	elog(NOTICE,"Inside sfunc");
+	
 
 	PG_RETURN_POINTER(state);
 }
 
 Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 {
-
+	
 	ArrayBuildState *state;
 	int dims[1], lbs[1], valsLength, i;
 	ArrayType *vals;
@@ -267,8 +202,6 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 		ereport(ERROR, (errmsg("Supported Datatypes are SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE PRECISION.")));
 	}
 
-	valsLength = (ARR_DIMS(vals))[0];
-
 	get_typlenbyvalalign(valsType, &valsTypeWidth, &valsTypeByValue, &valsTypeAlignmentCode);
 
 	deconstruct_array(vals, valsType, valsTypeWidth, valsTypeByValue, valsTypeAlignmentCode,
@@ -306,7 +239,6 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 		{
 			if (valsNullFlags[i])
 			{
-				elog(NOTICE,"Inside if");
 				continue;
 			}
 			else if (resultIsNull)
@@ -314,11 +246,9 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 				minV.i32 = DatumGetInt32(valsContent[i]);
 				maxV.i32 = DatumGetInt32(valsContent[i]);
 				resultIsNull = false;
-				elog(NOTICE,"Inside else if");
 			}
 			else
 			{
-				elog(NOTICE,"Inside else");
 				if (DatumGetInt32(valsContent[i]) < minV.i32)
 					minV.i32 = DatumGetInt32(valsContent[i]);
 				if (DatumGetInt32(valsContent[i]) > maxV.i32)

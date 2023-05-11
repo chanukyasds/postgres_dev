@@ -9,7 +9,9 @@
         "lsyscache.h": "c",
         "builtins.h": "c",
         "funcapi.h": "c",
-        "pg_type.h": "c"
+        "pg_type.h": "c",
+        "int.h": "c",
+        "typcache.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "[python]": {
