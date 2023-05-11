@@ -8,7 +8,8 @@
         "stddef.h": "c",
         "lsyscache.h": "c",
         "builtins.h": "c",
-        "funcapi.h": "c"
+        "funcapi.h": "c",
+        "pg_type.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "[python]": {

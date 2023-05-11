@@ -47,4 +47,6 @@ Datum array_concat(PG_FUNCTION_ARGS)
     }
 
     PG_RETURN_TEXT_P(result);
+
+    
 }
