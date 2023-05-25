@@ -1,0 +1,4 @@
+comment='external with cpp'
+default_version = 1.0
+module_pathname = '$libdir/external'
+relocatable = true
