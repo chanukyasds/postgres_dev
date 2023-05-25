@@ -11,7 +11,17 @@
         "funcapi.h": "c",
         "pg_type.h": "c",
         "int.h": "c",
-        "typcache.h": "c"
+        "typcache.h": "c",
+        "string.h": "c",
+        "numeric": "c",
+        "random": "c",
+        "spi.h": "c",
+        "cmath": "cpp",
+        "gsl_cdf.h": "c",
+        "stdio.h": "c",
+        "numeric.h": "c",
+        "gsl_math.h": "c",
+        "math.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled",
     "[python]": {

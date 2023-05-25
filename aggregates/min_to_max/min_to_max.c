@@ -10,7 +10,6 @@
 #include <utils/typcache.h>
 #include <funcapi.h>
 
-
 PG_MODULE_MAGIC;
 
 Datum min_to_max_sfunc(PG_FUNCTION_ARGS);
@@ -55,12 +54,14 @@ array_to_text_internal(FunctionCallInfo fcinfo, ArrayType *v, const char *fldsep
 		return cstring_to_text_with_len("", 0);
 
 	element_type = ARR_ELEMTYPE(v);
+	
 	initStringInfo(&buf);
 
 	my_extra = (ArrayMetaState *)fcinfo->flinfo->fn_extra;
+
 	if (my_extra == NULL)
 	{
-		
+
 		fcinfo->flinfo->fn_extra = MemoryContextAlloc(fcinfo->flinfo->fn_mcxt, sizeof(ArrayMetaState));
 		my_extra = (ArrayMetaState *)fcinfo->flinfo->fn_extra;
 		my_extra->element_type = ~element_type;
@@ -69,12 +70,10 @@ array_to_text_internal(FunctionCallInfo fcinfo, ArrayType *v, const char *fldsep
 	if (my_extra->element_type != element_type)
 	{
 
-		get_type_io_data(element_type, IOFunc_output,
-						 &my_extra->typlen, &my_extra->typbyval,
-						 &my_extra->typalign, &my_extra->typdelim,
-						 &my_extra->typioparam, &my_extra->typiofunc);
-		fmgr_info_cxt(my_extra->typiofunc, &my_extra->proc,
-					  fcinfo->flinfo->fn_mcxt);
+		get_type_io_data(element_type, IOFunc_output, &my_extra->typlen, &my_extra->typbyval, &my_extra->typalign, &my_extra->typdelim, &my_extra->typioparam, &my_extra->typiofunc);
+
+		fmgr_info_cxt(my_extra->typiofunc, &my_extra->proc, fcinfo->flinfo->fn_mcxt);
+
 		my_extra->element_type = element_type;
 	}
 	typlen = my_extra->typlen;
@@ -142,30 +141,31 @@ Datum min_to_max_sfunc(PG_FUNCTION_ARGS)
 	Datum data;
 
 	if (arg_type == InvalidOid)
-		ereport(ERROR,(errcode(ERRCODE_INVALID_PARAMETER_VALUE),errmsg("Invalid Parameter Value")));
+		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Invalid Parameter Value")));
 
 	if (!AggCheckCallContext(fcinfo, &aggcontext))
 		elog(ERROR, "min_to_max_sfunc called in non-aggregate context");
 
 	if (PG_ARGISNULL(0))
-		state = initArrayResult(arg_type, aggcontext, false);
+		state = initArrayResult(arg_type, aggcontext, false); // initially first argument is Null so we initArrayResult to return empty ArrayBuildState
 	else
-		state = (ArrayBuildState *)PG_GETARG_POINTER(0);
+		state = (ArrayBuildState *)PG_GETARG_POINTER(0); // from next time we directly get ArrayBuildState
 
+	// fetching the row data , if its null return 0 or fetch the row value
 	data = PG_ARGISNULL(1) ? (Datum)0 : PG_GETARG_DATUM(1);
 
+	// make an arrayBuildstate with each data value fetched
 	state = accumArrayResult(state, data, PG_ARGISNULL(1), arg_type, aggcontext);
 
-	
-
+	// returning the state with the rows processed to first argument internal
 	PG_RETURN_POINTER(state);
 }
 
 Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 {
-	
+
 	ArrayBuildState *state;
-	int dims[1], lbs[1], valsLength, i;
+	int dims[1], lbs[1], ndims, valsLength, i;
 	ArrayType *vals;
 	Oid valsType;
 	int16 valsTypeWidth, retTypeWidth;
@@ -178,6 +178,8 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 
 	Assert(AggCheckCallContext(fcinfo, NULL));
 
+	// fetching the data processed by state func from first argument which is internal
+	// all the rows will be in this state and later we make an array out of it
 	state = PG_ARGISNULL(0) ? NULL : (ArrayBuildState *)PG_GETARG_POINTER(0);
 
 	if (state == NULL)
@@ -186,9 +188,12 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 	dims[0] = state->nelems;
 	lbs[0] = 1;
 
+	// building array with ArrayBuildstate using makeMdArrayResult and typecast to ArrayType
 	vals = (ArrayType *)makeMdArrayResult(state, 1, dims, lbs, CurrentMemoryContext, false);
 
-	if (ARR_NDIM(vals) > 1)
+	ndims = vals->ndim;
+
+	if (ndims > 1)
 		ereport(ERROR, (errmsg("Not received one dimensional array ")));
 
 	valsType = ARR_ELEMTYPE(vals);
@@ -202,8 +207,10 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 		ereport(ERROR, (errmsg("Supported Datatypes are SMALLINT, INTEGER, BIGINT, REAL, or DOUBLE PRECISION.")));
 	}
 
+	// getting the width , typebyval and typealignment code
 	get_typlenbyvalalign(valsType, &valsTypeWidth, &valsTypeByValue, &valsTypeAlignmentCode);
 
+	// deconstructing the array
 	deconstruct_array(vals, valsType, valsTypeWidth, valsTypeByValue, valsTypeAlignmentCode,
 					  &valsContent, &valsNullFlags, &valsLength);
 
@@ -347,6 +354,6 @@ Datum min_to_max_ffunc(PG_FUNCTION_ARGS)
 	}
 	retArray = construct_md_array(retContent, retNulls, 1, dims, lbs, valsType, retTypeWidth, retTypeByValue, retTypeAlignmentCode);
 
-	//PG_RETURN_TEXT_P(return_result(retArray, "->"));
-	PG_RETURN_TEXT_P(array_to_text_internal(fcinfo,retArray,"->",NULL));
+	// PG_RETURN_TEXT_P(return_result(retArray, "->"));
+	PG_RETURN_TEXT_P(array_to_text_internal(fcinfo, retArray, "->", NULL));
 }
